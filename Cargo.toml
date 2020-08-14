@@ -1,0 +1,9 @@
+[package]
+name = "hake"
+version = "0.1.0"
+authors = ["cympfh <cympfh@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+structopt = { version = "0.3", default-features = false }
+rand = "*"
