@@ -31,6 +31,44 @@ pub struct Options {
 
     #[structopt(name = "mapping", help = "KEY=VALUE or KEY=RANGE")]
     pub map: Vec<String>,
+
+    #[structopt(flatten)]
+    pub optimize: OptimizeOptions,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct OptimizeOptions {
+    #[structopt(
+        short = "-N",
+        long,
+        default_value = "40",
+        help = "[Optimize] Num of Population"
+    )]
+    pub np: usize,
+
+    #[structopt(
+        short,
+        long,
+        default_value = "0.5",
+        help = "[Optimize] Prob of Cross-Over"
+    )]
+    pub cr: f64,
+
+    #[structopt(
+        short = "-F",
+        long,
+        default_value = "0.5",
+        help = "[Optimize] Inner Factor for Cross-Over"
+    )]
+    pub factor: f64,
+
+    #[structopt(
+        short = "L",
+        long = "loop",
+        default_value = "10",
+        help = "[Optimize] Num of Loop"
+    )]
+    pub num_loop: usize,
 }
 
 impl Options {
