@@ -1,2 +1,3 @@
+.hake/
 /target
 **/*.rs.bk
