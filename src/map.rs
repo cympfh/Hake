@@ -1,6 +1,11 @@
-#[derive(Debug)]
+extern crate rand;
+use rand::distributions::{Distribution, Uniform};
+
+pub type Param = Vec<(String, Value)>;
+
+#[derive(Debug, Clone)]
 pub struct Map {
-    data: Vec<(String, Value)>,
+    pub data: Param,
 }
 
 impl Map {
@@ -23,30 +28,45 @@ impl Map {
     pub fn iter(&self) -> MapIter {
         MapIter {
             idx: 0,
-            data: self.data.clone(),
+            data: self.clone(),
         }
+    }
+    pub fn index(&self, idx: usize) -> Param {
+        let mut ret = vec![];
+        let mut i = idx;
+        for (key, val) in self.data.iter() {
+            ret.push((key.clone(), val.index(i % val.len())));
+            i /= val.len();
+        }
+        ret
+    }
+    pub fn len(&self) -> usize {
+        let mut prod = 1;
+        for (_, val) in self.data.iter() {
+            prod *= val.len();
+        }
+        prod
+    }
+    pub fn rand(&self) -> Param {
+        let mut rng = rand::thread_rng();
+        let range = Uniform::from(0..self.len());
+        let idx = range.sample(&mut rng);
+        self.index(idx)
     }
 }
 
 pub struct MapIter {
     idx: usize,
-    data: Vec<(String, Value)>,
+    data: Map,
 }
 
 impl Iterator for MapIter {
     type Item = Vec<(String, Value)>;
     fn next(&mut self) -> Option<Self::Item> {
-        let mut ret = vec![];
-        let mut i = self.idx;
-        let mut prod = 1;
-        for (key, val) in self.data.iter() {
-            ret.push((key.clone(), val.index(i % val.len())));
-            i /= val.len();
-            prod *= val.len();
-        }
-        if self.idx >= prod {
+        if self.idx >= self.data.len() {
             None
         } else {
+            let ret = self.data.index(self.idx);
             self.idx += 1;
             Some(ret)
         }
@@ -195,6 +215,17 @@ mod tests {
             Value::from(&String::from("0...-1...-5")),
             Ok(Value::FloatRange(0.0, -5.0, -1.0))
         );
+    }
+
+    #[test]
+    fn value_len() {
+        assert_eq!(
+            Value::Choice(vec!["a".to_string(), "a".to_string()]).len(),
+            2
+        );
+        assert_eq!(Value::IntRange(0, 10, 1).len(), 11);
+        assert_eq!(Value::FloatRange(0.0, 10.0, 1.0).len(), 11);
+        assert_eq!(Value::FloatRange(0.0, 10.0, 2.0).len(), 6);
     }
 
     #[test]
