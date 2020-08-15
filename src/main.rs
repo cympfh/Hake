@@ -57,6 +57,17 @@ fn make(opt: &Options) -> Result<(), String> {
     Ok(())
 }
 
+fn git_hash() -> String {
+    let result = Command::new("git")
+        .args(&["log", "--pretty=format:%H", "-1"])
+        .stdout(Stdio::piped())
+        .output();
+    match result {
+        Ok(output) => output.stdout.iter().map(|&c| c as char).collect::<String>(),
+        _ => String::new(),
+    }
+}
+
 fn listen(child: &mut Child, name: &String, log: &String, args: &Vec<String>) {
     use std::fs::{create_dir_all, OpenOptions};
     create_dir_all(".hake_log").unwrap();
@@ -74,7 +85,7 @@ fn listen(child: &mut Child, name: &String, log: &String, args: &Vec<String>) {
         print!("{}", line);
     };
 
-    tee(json!({"name": &name, "make_args": &args}).to_string());
+    tee(json!({"name": &name, "make_args": &args, "git_hash": git_hash()}).to_string());
 
     if let Some(out) = child.stdout.as_mut() {
         let reader = BufReader::new(out);
