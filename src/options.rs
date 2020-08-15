@@ -8,41 +8,34 @@ use crate::name;
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
-    #[structopt(short, long, help = "For developers")]
+    #[structopt(short, long, help = "For Developers")]
     pub debug: bool,
 
-    #[structopt(short, long, help = "noisy logging")]
+    #[structopt(short, long, help = "With Noisy Logging")]
     pub verbose: bool,
 
-    #[structopt(short, long, help = "As Makefile")]
+    #[structopt(short, long, help = "As H(M)akefile")]
     pub file: Option<String>,
 
     #[structopt(long, help = "Experiment Name")]
     pub name: Option<String>,
 
-    #[structopt(long, help = "Maximize Metric")]
+    #[structopt(long, value_name = "metric", help = "Metric to Maximize", conflicts_with_all(&["min"]))]
     pub max: Option<String>,
 
-    #[structopt(long, help = "Minimize Metric")]
+    #[structopt(long, value_name = "metric", help = "Metric to Minimize")]
     pub min: Option<String>,
 
-    #[structopt(help = "TARGET")]
+    #[structopt(help = "Target in H(M)akefile")]
     pub target: Option<String>,
 
-    #[structopt(help = "KEY=VALUE or KEY=RANGE")]
+    #[structopt(name = "mapping", help = "KEY=VALUE or KEY=RANGE")]
     pub map: Vec<String>,
 }
 
 impl Options {
     pub fn from() -> Self {
         Options::from_args()
-    }
-
-    pub fn validate(&self) -> Result<(), String> {
-        if self.max.is_some() && self.min.is_some() {
-            return Err("You can pass only one of --max, --min".to_string());
-        }
-        Ok(())
     }
 
     /// -f or `Hakefile` or `Makefile`
