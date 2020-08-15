@@ -23,6 +23,8 @@ fn make(opt: &Options) -> Result<(), String> {
     eprintln!("\x1b[33mExperiment Name: {}\x1b[0m", &name);
     if let Some((obj, metric)) = &watching_metric {
         eprintln!("{:?} `{}`", obj, metric);
+    } else {
+        eprintln!("No Metric");
     }
 
     let mut args = vec![String::from("-f"), opt.makefile()?];

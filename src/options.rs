@@ -8,29 +8,28 @@ use crate::name;
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
-    #[structopt(short, long, help = "For developers")]
+    #[structopt(short, long, help = "For Developers")]
     pub debug: bool,
 
-    #[structopt(short, long, help = "noisy logging")]
+    #[structopt(short, long, help = "With Noisy Logging")]
     pub verbose: bool,
 
-    #[structopt(short, long, help = "As Makefile")]
+    #[structopt(short, long, help = "As H(M)akefile")]
     pub file: Option<String>,
 
     #[structopt(long, help = "Experiment Name")]
     pub name: Option<String>,
 
-    #[structopt(
-        short,
-        long,
-        help = "Metric to watch; By default minimize it. To maximize, put prefix + (e.g. --metric +acc)."
-    )]
-    pub metric: Option<String>,
+    #[structopt(long, value_name = "metric", help = "Metric to Maximize", conflicts_with_all(&["min"]))]
+    pub max: Option<String>,
 
-    #[structopt(help = "TARGET")]
+    #[structopt(long, value_name = "metric", help = "Metric to Minimize")]
+    pub min: Option<String>,
+
+    #[structopt(help = "Target in H(M)akefile")]
     pub target: Option<String>,
 
-    #[structopt(help = "KEY=VALUE or KEY=RANGE")]
+    #[structopt(name = "mapping", help = "KEY=VALUE or KEY=RANGE")]
     pub map: Vec<String>,
 }
 
@@ -82,13 +81,11 @@ impl Options {
     }
 
     pub fn metric(&self) -> Option<(Objective, String)> {
-        self.metric.clone().map(|s| {
-            let name: String = s[1..].to_string();
-            match s.chars().next() {
-                Some('+') => (Objective::Maximize, name),
-                _ => (Objective::Minimize, s),
-            }
-        })
+        match (self.max.clone(), self.min.clone()) {
+            (Some(name), None) => Some((Objective::Maximize, name)),
+            (None, Some(name)) => Some((Objective::Minimize, name)),
+            _ => None,
+        }
     }
 }
 
