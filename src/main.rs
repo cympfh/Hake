@@ -1,3 +1,4 @@
+extern crate serde;
 extern crate serde_json;
 use serde_json::json;
 
@@ -8,16 +9,21 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 
 mod map;
-mod name;
 use map::*;
-
+mod metric;
+use metric::Metric;
+mod name;
 mod options;
 use options::*;
 
 fn make(opt: &Options) -> Result<(), String> {
-    let (targets, map) = opt.target_map();
     let name = opt.name();
+    let (targets, map) = opt.target_map();
+    let watching_metric = opt.metric();
     eprintln!("\x1b[33mExperiment Name: {}\x1b[0m", &name);
+    if let Some((obj, metric)) = &watching_metric {
+        eprintln!("{:?} `{}`", obj, metric);
+    }
 
     let mut args = vec![String::from("-f"), opt.makefile()?];
     for t in targets {
@@ -51,7 +57,7 @@ fn make(opt: &Options) -> Result<(), String> {
             .stdout(Stdio::piped())
             .spawn()
             .expect("Something Error to Make");
-        listen(&mut child, &name, &log, &args);
+        listen(&mut child, &name, &log, &args, &watching_metric);
     }
 
     Ok(())
@@ -68,7 +74,13 @@ fn git_hash() -> String {
     }
 }
 
-fn listen(child: &mut Child, name: &String, log: &String, args: &Vec<String>) {
+fn listen(
+    child: &mut Child,
+    name: &String,
+    log: &String,
+    args: &Vec<String>,
+    watching_metric: &Option<(Objective, String)>,
+) {
     use std::fs::{create_dir_all, OpenOptions};
     create_dir_all(".hake_log").unwrap();
     let mut log = OpenOptions::new()
@@ -78,20 +90,35 @@ fn listen(child: &mut Child, name: &String, log: &String, args: &Vec<String>) {
         .open(log)
         .unwrap();
 
-    let mut tee = |line: String| {
+    let mut tee = |line: String, is_metric: bool| {
         let now = Local::now();
         let line = format!("[{:?}] {}\n", now, line);
         let _ = log.write_all(line.as_bytes());
-        print!("{}", line);
+        if is_metric {
+            print!("\x1b[31m{}\x1b[0m", line);
+        } else {
+            print!("{}", line);
+        }
     };
 
-    tee(json!({"name": &name, "make_args": &args, "git_hash": git_hash()}).to_string());
+    tee(
+        json!({"name": &name, "make_args": &args, "git_hash": git_hash()}).to_string(),
+        false,
+    );
 
     if let Some(out) = child.stdout.as_mut() {
         let reader = BufReader::new(out);
         for line in reader.lines() {
             match line {
-                Ok(line) => tee(line),
+                Ok(line) => {
+                    if let Ok(metric) = serde_json::from_str::<Metric>(&line) {
+                        let is_watching = watching_metric.is_some()
+                            && watching_metric.as_ref().unwrap().1 == metric.metric;
+                        tee(line, is_watching);
+                    } else {
+                        tee(line, false);
+                    }
+                }
                 _ => {}
             }
         }
@@ -100,7 +127,7 @@ fn listen(child: &mut Child, name: &String, log: &String, args: &Vec<String>) {
 
 fn main() -> Result<(), String> {
     let opt = Options::from();
-    if opt.debug || opt.verbose {
+    if opt.debug {
         eprintln!("{:?}", &opt);
     }
     make(&opt)

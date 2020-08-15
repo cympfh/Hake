@@ -20,6 +20,13 @@ pub struct Options {
     #[structopt(long, help = "Experiment Name")]
     pub name: Option<String>,
 
+    #[structopt(
+        short,
+        long,
+        help = "Metric to watch; By default minimize it. To maximize, put prefix + (e.g. --metric +acc)."
+    )]
+    pub metric: Option<String>,
+
     #[structopt(help = "TARGET")]
     pub target: Option<String>,
 
@@ -73,4 +80,20 @@ impl Options {
         }
         (target, map)
     }
+
+    pub fn metric(&self) -> Option<(Objective, String)> {
+        self.metric.clone().map(|s| {
+            let name: String = s[1..].to_string();
+            match s.chars().next() {
+                Some('+') => (Objective::Maximize, name),
+                _ => (Objective::Minimize, s),
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Objective {
+    Minimize,
+    Maximize,
 }
