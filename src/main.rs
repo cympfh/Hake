@@ -130,5 +130,6 @@ fn main() -> Result<(), String> {
     if opt.debug {
         eprintln!("{:?}", &opt);
     }
+    opt.validate()?;
     make(&opt)
 }

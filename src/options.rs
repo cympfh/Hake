@@ -20,12 +20,11 @@ pub struct Options {
     #[structopt(long, help = "Experiment Name")]
     pub name: Option<String>,
 
-    #[structopt(
-        short,
-        long,
-        help = "Metric to watch; By default minimize it. To maximize, put prefix + (e.g. --metric +acc)."
-    )]
-    pub metric: Option<String>,
+    #[structopt(long, help = "Maximize Metric")]
+    pub max: Option<String>,
+
+    #[structopt(long, help = "Minimize Metric")]
+    pub min: Option<String>,
 
     #[structopt(help = "TARGET")]
     pub target: Option<String>,
@@ -37,6 +36,13 @@ pub struct Options {
 impl Options {
     pub fn from() -> Self {
         Options::from_args()
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max.is_some() && self.min.is_some() {
+            return Err("You can pass only one of --max, --min".to_string());
+        }
+        Ok(())
     }
 
     /// -f or `Hakefile` or `Makefile`
@@ -82,13 +88,11 @@ impl Options {
     }
 
     pub fn metric(&self) -> Option<(Objective, String)> {
-        self.metric.clone().map(|s| {
-            let name: String = s[1..].to_string();
-            match s.chars().next() {
-                Some('+') => (Objective::Maximize, name),
-                _ => (Objective::Minimize, s),
-            }
-        })
+        match (self.max.clone(), self.min.clone()) {
+            (Some(name), None) => Some((Objective::Maximize, name)),
+            (None, Some(name)) => Some((Objective::Minimize, name)),
+            _ => None,
+        }
     }
 }
 
