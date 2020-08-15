@@ -102,7 +102,17 @@ fn make(opt: &Options) -> Result<(), String> {
                 pool = pool[0..opt.optimize.np].to_vec();
             }
 
-            eprintln!("{:?}", pool[0]);
+            println!(
+                "\x1b[31m{} {} = {} when {:?}\x1b[0m",
+                if obj == Objective::Maximize {
+                    "Max"
+                } else {
+                    "Min"
+                },
+                metric_name,
+                pool[0].1.value,
+                pool[0].0
+            );
         }
     }
 
@@ -166,12 +176,12 @@ fn listen(
         .open(log)
         .unwrap();
 
-    let mut tee = |line: String, is_metric: bool| {
+    let mut tee = |msg: String, is_metric: bool| {
         let now = Local::now();
-        let line = format!("[{:?}] {}\n", now, line);
+        let line = format!("[{:?}] {}\n", now, msg);
         let _ = log.write_all(line.as_bytes());
         if is_metric {
-            print!("\x1b[31m{}\x1b[0m", line);
+            println!("[{:?}] \x1b[31m{}\x1b[0m", now, msg);
         } else {
             print!("{}", line);
         }
