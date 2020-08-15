@@ -33,7 +33,7 @@ fn make(opt: &Options) -> Result<(), String> {
 
     fn log_file_name(name: &String, id: usize) -> String {
         let now = Local::now();
-        format!(".hake_log/{}_{}_{:08}", now.format("%Y%m%d"), name, id)
+        format!(".hake/log/{}_{}_{:08}", now.format("%Y%m%d"), name, id)
     }
 
     for (id, param) in map.iter().enumerate() {
@@ -82,7 +82,7 @@ fn listen(
     watching_metric: &Option<(Objective, String)>,
 ) {
     use std::fs::{create_dir_all, OpenOptions};
-    create_dir_all(".hake_log").unwrap();
+    create_dir_all(".hake/log").unwrap();
     let mut log = OpenOptions::new()
         .write(true)
         .create(true)
