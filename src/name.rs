@@ -1,13 +1,26 @@
 extern crate rand;
-use rand::distributions::{Distribution, Uniform};
 
-pub fn name() -> String {
+use rand::distributions::{Distribution, Uniform};
+use std::fs::{create_dir_all, File};
+use std::path::Path;
+
+pub fn gen() -> String {
     let mut rng = rand::thread_rng();
     let adj = Uniform::from(0..ADJ.len());
     let noun = Uniform::from(0..NOUN.len());
     let i = adj.sample(&mut rng);
     let j = noun.sample(&mut rng);
     format!("{}_{}", ADJ[i], NOUN[j])
+}
+
+pub fn exists(name: &String) -> bool {
+    Path::new(&format!(".hake/names/{}", name)).exists()
+}
+
+pub fn touch(name: &String) -> std::io::Result<()> {
+    create_dir_all(".hake/names")?;
+    File::create(Path::new(&format!(".hake/names/{}", name)))?;
+    Ok(())
 }
 
 const ADJ: [&str; 108] = [

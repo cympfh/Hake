@@ -96,11 +96,27 @@ impl Options {
     }
 
     /// --name or auto-generated name
-    pub fn name(&self) -> String {
-        if let Some(a) = self.name.clone() {
-            a
+    pub fn name(&self) -> Result<String, String> {
+        if let Some(name) = self.name.clone() {
+            if name::exists(&name) {
+                Err(format!("Name Already Exists: {}", name))
+            } else {
+                Ok(name)
+            }
         } else {
-            name::name()
+            let mut name = name::gen();
+            for _ in 0..1000 {
+                if name::exists(&name) {
+                    name = name::gen();
+                } else {
+                    break;
+                }
+            }
+            if name::exists(&name) {
+                Err(format!("Name exhausted!? Please consider to clean."))
+            } else {
+                Ok(name)
+            }
         }
     }
 

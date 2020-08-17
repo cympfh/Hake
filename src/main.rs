@@ -26,7 +26,7 @@ fn log_file_name(name: &String, id: usize) -> String {
 }
 
 fn make(opt: &Options) -> Result<(), String> {
-    let name = opt.name();
+    let name = opt.name()?;
     let (targets, map) = opt.target_map();
 
     eprintln!("\x1b[33mExperiment Name: {}\x1b[0m", &name);
@@ -36,6 +36,8 @@ fn make(opt: &Options) -> Result<(), String> {
         args.push(t.clone());
     }
     args.push(format!("NAME={}", &name));
+
+    name::touch(&name).expect("Cannot put name file.");
 
     match opt.metric() {
         None => {
