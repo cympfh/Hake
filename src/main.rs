@@ -127,6 +127,7 @@ fn testone(
     watching_metric: Option<&String>,
 ) -> Option<Metric> {
     let mut args = args.clone();
+    args.push(format!("HID={}", id));
     for (key, val) in param.iter() {
         let s = match val {
             Value::Val(x) => format!("{}={}", key, x),
