@@ -97,7 +97,7 @@ fn make(opt: &Options) -> Result<(), String> {
                     let pool = pool.lock().unwrap();
                     let mut q = job_queue.lock().unwrap();
                     // Evolution
-                    for i in 0..opt.optimize.np {
+                    for (x, _) in pool.iter() {
                         let a;
                         let b;
                         let c;
@@ -110,20 +110,9 @@ fn make(opt: &Options) -> Result<(), String> {
                             b = &pool[j].0;
                             c = &pool[k].0;
                         }
-                        let z = cross(
-                            &pool[i].0,
-                            &a,
-                            &b,
-                            &c,
-                            &map,
-                            opt.optimize.cr,
-                            opt.optimize.factor,
-                        );
+                        let z = cross(&x, &a, &b, &c, &map, opt.optimize.cr, opt.optimize.factor);
                         if opt.debug {
-                            eprintln!(
-                                "DE: {:?} + ({:?}, {:?}, {:?}) => {:?}",
-                                &pool[i].0, &a, &b, &c, &z
-                            );
+                            eprintln!("DE: {:?} + ({:?}, {:?}, {:?}) => {:?}", &x, &a, &b, &c, &z);
                         }
                         q.push_back(z);
                     }
@@ -185,7 +174,6 @@ fn make(opt: &Options) -> Result<(), String> {
                         eprintln!("The {}-th Generation Top: {:?}", gen, pool[0]);
                     }
                 }
-                continue;
             }
 
             // Finish
