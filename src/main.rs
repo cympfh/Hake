@@ -29,7 +29,7 @@ fn make(opt: &Options) -> Result<(), String> {
     let name = opt.name()?;
     let (targets, map) = opt.target_map();
 
-    eprintln!("\x1b[33mExperiment Name: {}\x1b[0m", &name);
+    eprintln!("\x1b[33mName: {}\x1b[0m", &name);
 
     let mut args = vec![String::from("-f"), opt.makefile()?];
     for t in targets {
@@ -41,7 +41,6 @@ fn make(opt: &Options) -> Result<(), String> {
 
     match opt.metric() {
         None => {
-            eprintln!("No Metric");
             for (id, param) in map.iter().enumerate() {
                 testone(&name, id, &args, &param, None);
             }
