@@ -3,7 +3,6 @@ extern crate rand;
 use rand::distributions::{Distribution, Uniform};
 
 use crate::map::{Map, Param, Value};
-use crate::metric::Metric;
 
 fn clip<T: PartialOrd>(x: T, min: T, max: T) -> T {
     let x = if x < min { min } else { x };
@@ -14,16 +13,8 @@ fn clip<T: PartialOrd>(x: T, min: T, max: T) -> T {
     }
 }
 
-pub fn cross(x: &Param, map: &Map, pool: &Vec<(Param, Metric)>, cr: f64, factor: f64) -> Param {
+pub fn cross(x: &Param, a: &Param, b: &Param, c: &Param, map: &Map, cr: f64, factor: f64) -> Param {
     let mut rng = rand::thread_rng();
-
-    let indices = Uniform::from(0..pool.len() - 1);
-    let i = indices.sample(&mut rng);
-    let j = (i + indices.sample(&mut rng) + 1) % pool.len();
-    let k = (j + indices.sample(&mut rng) + 1) % pool.len();
-    let a: &Param = &pool[i].0;
-    let b: &Param = &pool[j].0;
-    let c: &Param = &pool[k].0;
 
     use Value::*;
 

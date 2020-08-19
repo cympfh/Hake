@@ -17,6 +17,9 @@ pub struct Options {
     #[structopt(short, long, help = "As H(M)akefile")]
     pub file: Option<String>,
 
+    #[structopt(short, help = "num of threads for parallel", default_value = "1")]
+    pub j: usize,
+
     #[structopt(long, help = "Experiment Name")]
     pub name: Option<String>,
 
@@ -140,6 +143,10 @@ impl Options {
             (None, Some(name)) => Some((Objective::Minimize, name)),
             _ => None,
         }
+    }
+
+    pub fn parallels(&self) -> usize {
+        std::cmp::min(self.j, self.optimize.np)
     }
 }
 

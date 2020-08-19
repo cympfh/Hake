@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+use std::thread;
+
 extern crate serde;
 extern crate serde_json;
 use serde_json::json;
@@ -16,7 +20,7 @@ mod name;
 mod options;
 use options::*;
 mod util;
-use util::Total;
+use util::{sample, Total};
 mod de;
 use de::cross;
 
@@ -41,68 +45,151 @@ fn make(opt: &Options) -> Result<(), String> {
 
     match opt.metric() {
         None => {
+            // Brute-force
+            let name = Arc::new(name);
+            let args = Arc::new(args);
+            let mut handles = VecDeque::new();
             for (id, param) in map.iter().enumerate() {
-                testone(&name, id, &args, &param, None);
+                let name = name.clone();
+                let args = args.clone();
+                let handle = thread::spawn(move || {
+                    testone(&name, id, &args, &param, None);
+                });
+                handles.push_back(handle);
+                while handles.len() >= opt.parallels() {
+                    let handle_top = handles.pop_front().unwrap();
+                    handle_top.join().unwrap();
+                }
+            }
+            // Wait Rest All
+            while let Some(handle) = handles.pop_front() {
+                handle.join().unwrap();
             }
         }
         Some((obj, metric_name)) => {
             // Optimize by Differential Evolution
             eprintln!("{:?} `{}`", obj, &metric_name);
-            let mut pool = vec![];
-            let mut id: usize = 0;
-            while pool.len() < opt.optimize.np * 2 {
-                let param = map.rand();
-                if opt.debug {
-                    eprintln!("Random Param: {:?}", &param);
+            let name = Arc::new(name);
+            let args = Arc::new(args);
+            let metric_name = Arc::new(metric_name);
+            // DE vars
+            let pool: Arc<Mutex<Vec<(Param, Metric)>>> = Arc::new(Mutex::new(vec![]));
+            let id = Arc::new(Mutex::new(0));
+            let job_queue = Arc::new(Mutex::new(VecDeque::new()));
+
+            for gen in 0..opt.optimize.num_loop + 1 {
+                if opt.debug || opt.verbose {
+                    eprintln!("# Generation: {}", gen);
                 }
-                if let Some(result) = testone(&name, id, &args, &param, Some(&metric_name)) {
-                    pool.push((param, result));
-                    id += 1;
-                } else {
-                    eprintln!("[Warning!] No Metric Report detected!");
-                    continue;
-                }
-            }
-            {
-                pool.sort_by_key(|item| Total(item.1.value));
-                if obj == Objective::Maximize {
-                    pool.reverse();
-                }
-                pool = pool[0..opt.optimize.np].to_vec();
-            }
-            for _ in 0..opt.optimize.num_loop {
-                for i in 0..opt.optimize.np {
-                    let z = cross(
-                        &pool[i].0,
-                        &map,
-                        &pool,
-                        opt.optimize.cr,
-                        opt.optimize.factor,
-                    );
-                    if opt.debug {
-                        eprintln!("DE: {:?} => {:?}", &pool[i].0, &z);
+                // Set Jobs Queue
+                let poolsize = pool.lock().unwrap().len();
+                if poolsize == 0 {
+                    // Random Seeds to Fill Pool
+                    for _ in 0..opt.optimize.np {
+                        let param = map.rand();
+                        if opt.debug {
+                            eprintln!("Random Param: {:?}", &param);
+                        }
+                        let mut q = job_queue.lock().unwrap();
+                        q.push_back(param);
                     }
-                    if let Some(result) = testone(&name, id, &args, &z, Some(&metric_name)) {
-                        pool.push((z, result));
-                        id += 1;
+                } else {
+                    let pool = pool.lock().unwrap();
+                    let mut q = job_queue.lock().unwrap();
+                    // Evolution
+                    for i in 0..opt.optimize.np {
+                        let a;
+                        let b;
+                        let c;
+                        {
+                            let indices = sample(&pool, 3);
+                            let i = indices[0];
+                            let j = indices[1];
+                            let k = indices[2];
+                            a = &pool[i].0;
+                            b = &pool[j].0;
+                            c = &pool[k].0;
+                        }
+                        let z = cross(
+                            &pool[i].0,
+                            &a,
+                            &b,
+                            &c,
+                            &map,
+                            opt.optimize.cr,
+                            opt.optimize.factor,
+                        );
+                        if opt.debug {
+                            eprintln!(
+                                "DE: {:?} + ({:?}, {:?}, {:?}) => {:?}",
+                                &pool[i].0, &a, &b, &c, &z
+                            );
+                        }
+                        q.push_back(z);
+                    }
+                }
+
+                let mut handles = VecDeque::new();
+
+                // Parallel Max to -j
+                loop {
+                    let next_job = job_queue.lock().unwrap().pop_front();
+                    if let Some(param) = next_job {
+                        let name = name.clone();
+                        let args = args.clone();
+                        let metric_name = metric_name.clone();
+                        let pool = pool.clone();
+                        let id = id.clone();
+                        let handle = thread::spawn(move || {
+                            let hid: usize;
+                            {
+                                let mut id = id.lock().unwrap();
+                                hid = (*id).clone();
+                                *id += 1;
+                            }
+                            if let Some(result) =
+                                testone(&name, hid, &args, &param, Some(&metric_name))
+                            {
+                                let mut pool = pool.lock().unwrap();
+                                pool.push((param, result));
+                            } else {
+                                eprintln!("[Warning!] No Metric Report detected!");
+                            }
+                        });
+                        handles.push_back(handle);
                     } else {
-                        eprintln!("[Warning!] No Metric Report detected!");
+                        if opt.debug {
+                            eprintln!("No More Job");
+                        }
+                        break;
+                    }
+                    while handles.len() >= opt.parallels() {
+                        let handle_top = handles.pop_front().unwrap();
+                        handle_top.join().unwrap();
                     }
                 }
-                let param = map.rand();
-                if let Some(result) = testone(&name, id, &args, &param, Some(&metric_name)) {
-                    pool.push((param, result));
-                    id += 1;
-                } else {
-                    eprintln!("[Warning!] No Metric Report detected!");
+                // Run Rest All
+                while let Some(handle) = handles.pop_front() {
+                    handle.join().unwrap()
                 }
-                pool.sort_by_key(|item| Total(item.1.value));
-                if obj == Objective::Maximize {
-                    pool.reverse();
+
+                // Eliminate Top Seeds
+                {
+                    let mut pool = pool.lock().unwrap();
+                    pool.sort_by_key(|item| Total(item.1.value));
+                    if obj == Objective::Maximize {
+                        pool.reverse();
+                    }
+                    pool.truncate(opt.optimize.np);
+                    if opt.debug || opt.debug {
+                        eprintln!("The {}-th Generation Top: {:?}", gen, pool[0]);
+                    }
                 }
-                pool = pool[0..opt.optimize.np].to_vec();
+                continue;
             }
 
+            // Finish
+            let pool = pool.lock().unwrap();
             println!(
                 "\x1b[31m{} {} = {} when {:?}\x1b[0m",
                 if obj == Objective::Maximize {
