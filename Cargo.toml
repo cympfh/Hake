@@ -1,6 +1,6 @@
 [package]
 name = "hake"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["cympfh <cympfh@gmail.com>"]
 edition = "2018"
 
@@ -10,3 +10,7 @@ rand = "*"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
+regex = "1"
+
+[[bin]]
+name = "hake-grep"

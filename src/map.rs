@@ -53,6 +53,15 @@ impl Map {
         let idx = range.sample(&mut rng);
         self.index(idx)
     }
+    #[allow(dead_code)]
+    pub fn get(&self, key: &String) -> Option<&Value> {
+        for (k, v) in self.data.iter() {
+            if key == k {
+                return Some(v);
+            }
+        }
+        None
+    }
 }
 
 pub struct MapIter {
