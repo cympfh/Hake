@@ -15,7 +15,7 @@ use std::process::{Child, Command, Stdio};
 mod map;
 use map::*;
 mod metric;
-use metric::Metric;
+use metric::{average, Metric};
 mod name;
 mod options;
 use options::*;
@@ -127,6 +127,7 @@ fn make(opt: &Options) -> Result<(), String> {
                         let name = name.clone();
                         let args = args.clone();
                         let metric_name = metric_name.clone();
+                        let metric_num_samples = opt.metric_num_samples().clone();
                         let pool = pool.clone();
                         let id = id.clone();
                         let handle = thread::spawn(move || {
@@ -136,9 +137,11 @@ fn make(opt: &Options) -> Result<(), String> {
                                 hid = (*id).clone();
                                 *id += 1;
                             }
-                            if let Some(result) =
-                                testone(&name, hid, &args, &param, Some(&metric_name))
-                            {
+                            let metric_samples: Vec<Metric> = (0..metric_num_samples)
+                                .map(|_| testone(&name, hid, &args, &param, Some(&metric_name)))
+                                .filter_map(|result| result)
+                                .collect();
+                            if let Some(result) = average(metric_samples) {
                                 let mut pool = pool.lock().unwrap();
                                 pool.push((param, result));
                             } else {

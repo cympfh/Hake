@@ -29,6 +29,14 @@ pub struct Options {
     #[structopt(long, value_name = "metric", help = "Metric to Minimize")]
     pub min: Option<String>,
 
+    #[structopt(
+        long,
+        short = "M",
+        help = "Num of Samples for averaging metric",
+        default_value = "1"
+    )]
+    pub metric_num_samples: usize,
+
     #[structopt(help = "Target in H(M)akefile")]
     pub target: Option<String>,
 
@@ -143,6 +151,10 @@ impl Options {
             (None, Some(name)) => Some((Objective::Minimize, name)),
             _ => None,
         }
+    }
+
+    pub fn metric_num_samples(&self) -> usize {
+        self.metric_num_samples
     }
 
     pub fn parallels(&self) -> usize {
