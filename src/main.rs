@@ -49,7 +49,13 @@ fn make(opt: &Options) -> Result<(), String> {
             let name = Arc::new(name);
             let args = Arc::new(args);
             let mut handles = VecDeque::new();
+            let now = std::time::SystemTime::now();
             for (id, param) in map.iter().enumerate() {
+                if let Ok(elapsed) = now.elapsed() {
+                    if opt.timeout > 0 && elapsed.as_secs() > opt.timeout {
+                        break;
+                    }
+                }
                 let name = name.clone();
                 let args = args.clone();
                 let handle = thread::spawn(move || {
@@ -77,7 +83,13 @@ fn make(opt: &Options) -> Result<(), String> {
             let id = Arc::new(Mutex::new(0));
             let job_queue = Arc::new(Mutex::new(VecDeque::new()));
 
+            let now = std::time::SystemTime::now();
             for gen in 0..opt.optimize.num_loop + 1 {
+                if let Ok(elapsed) = now.elapsed() {
+                    if opt.timeout > 0 && elapsed.as_secs() > opt.timeout {
+                        break;
+                    }
+                }
                 if opt.debug || opt.verbose {
                     eprintln!("# Generation: {}", gen);
                 }

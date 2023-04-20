@@ -45,6 +45,14 @@ pub struct Options {
 
     #[structopt(flatten)]
     pub optimize: OptimizeOptions,
+
+    #[structopt(
+        short,
+        long,
+        help = "timeout sec (0 for endless by default)",
+        default_value = "0"
+    )]
+    pub timeout: u64,
 }
 
 #[derive(Debug, StructOpt)]
