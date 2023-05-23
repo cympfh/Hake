@@ -46,6 +46,7 @@ fn make(opt: &Options) -> Result<(), String> {
     match opt.metric() {
         None => {
             // Brute-force
+            eprintln!("\x1b[33mMetric: None\x1b[0m");
             let name = Arc::new(name);
             let args = Arc::new(args);
             let mut handles = VecDeque::new();
@@ -74,7 +75,7 @@ fn make(opt: &Options) -> Result<(), String> {
         }
         Some((obj, metric_name)) => {
             // Optimize by Differential Evolution
-            eprintln!("{:?} `{}`", obj, &metric_name);
+            eprintln!("\x1b[33m{:?}: {}\x1b[0m", obj, &metric_name);
             let name = Arc::new(name);
             let args = Arc::new(args);
             let metric_name = Arc::new(metric_name);
@@ -134,6 +135,11 @@ fn make(opt: &Options) -> Result<(), String> {
 
                 // Parallel Max to -j
                 loop {
+                    if let Ok(elapsed) = now.elapsed() {
+                        if opt.timeout > 0 && elapsed.as_secs() > opt.timeout {
+                            break;
+                        }
+                    }
                     let next_job = job_queue.lock().unwrap().pop_front();
                     if let Some(param) = next_job {
                         let name = name.clone();
