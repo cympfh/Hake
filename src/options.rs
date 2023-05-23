@@ -5,6 +5,10 @@ use structopt::StructOpt;
 
 use crate::map::*;
 use crate::name;
+use nom::{
+    branch::alt, bytes::complete::tag, character::complete::digit1, combinator::map,
+    sequence::terminated, IResult,
+};
 
 #[derive(Debug, StructOpt)]
 pub struct Options {
@@ -49,7 +53,8 @@ pub struct Options {
     #[structopt(
         short,
         long,
-        help = "timeout sec (0 for endless by default)",
+        parse(from_str = parse_timeout),
+        help = "timeout sec (0 for no timeout) (e.g. --timeout 10, --timeout 30m, --timeout 1h)",
         default_value = "0"
     )]
     pub timeout: u64,
@@ -174,4 +179,27 @@ impl Options {
 pub enum Objective {
     Minimize,
     Maximize,
+}
+
+/// parser for --timeout
+fn parse_timeout(input: &str) -> u64 {
+    fn read_int(input: &str) -> IResult<&str, u64> {
+        let (rest, digits) = digit1(input)?;
+        let value = digits.parse::<u64>().ok().unwrap();
+        Ok((rest, value))
+    }
+    let mut parser = alt((
+        map(terminated(read_int, tag("s")), |value: u64| value),
+        map(terminated(read_int, tag("m")), |value: u64| value * 60),
+        map(terminated(read_int, tag("h")), |value: u64| value * 60 * 60),
+        map(terminated(read_int, tag("d")), |value: u64| {
+            value * 60 * 60 * 24
+        }),
+        read_int,
+    ));
+    let (rest, value) = parser(input).ok().unwrap();
+    if !rest.is_empty() {
+        panic!("Parsing error --timeout");
+    }
+    value
 }
